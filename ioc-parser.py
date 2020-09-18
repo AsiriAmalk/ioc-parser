@@ -53,6 +53,7 @@ except ImportError:
 
 # Import optional third-party libraries
 IMPORTS = []
+import pandas as pd
 try:
     from PyPDF2 import PdfFileReader
     IMPORTS.append('pypdf2')
@@ -231,8 +232,59 @@ class IOC_Parser(object):
                 self.dedup_store = set()
                 
             data = f.read()
-            soup = BeautifulSoup(data)
+            soup = BeautifulSoup(data, "html.parser")
             html = soup.findAll(text=True)
+            sections = soup.find_all("section")
+            section = sections[0]
+            dls = section.find_all("dl")
+
+            section_name = section.find("h3").text.replace("\n", "")
+            section_dict = {}
+            for i in range(len(dls)):
+                #     print(i)
+                dl = dls[i]
+                key_ = dl.find("dt").text
+                value_ = dl.find("dd").text.rsplit()
+                section_dict[key_] = value_
+
+            categories = {'ransomware', 'adware', 'spyware', 'worm', 'rootkit', 'trojan', 'backdoor'}
+            tag_dict = {"family": "", "category": ""}
+
+            matches = categories & set(section_dict["Tags:"])
+            no_matches = set(section_dict["Tags:"]) - categories
+
+            match_length = len(matches)
+
+            if match_length == 0:
+                matches = {"unknown"}
+            if len(no_matches) == 0:
+                no_matches = {"unknown"}
+
+            length = len(section_dict["Tags:"])
+
+            tag_dict["family"] = list(no_matches)
+            tag_dict["category"] = list(matches)
+
+            # if length == 0:
+            #     tag_dict["family"] = {"unknown"}
+            #     tag_dict["category"] = {"unknown"}
+            # elif length == 1:
+            #     tag_dict["family"] = {"unknown"}
+            #     tag_dict["category"] = list(matches)
+            # elif length == 2:
+            #     tag_dict["family"] = {"unknown"}
+            #     tag_dict["category"] = list(matches)
+            # else:
+            #     tag_dict["family"] = set(section_dict["Tags:"]) - categories
+            #     tag_dict["category"] = list(matches)
+            for tag in section_dict["Tags:"]:
+                print(fpath+"       1       TAG    " + tag)
+
+            for family in tag_dict["family"]:
+                print(fpath+"       1       Family    " + family)
+
+            for cat in tag_dict["category"]:
+                print(fpath+"       1       Category    " + cat)
 
             text = u''
             for elem in html:
@@ -243,9 +295,9 @@ class IOC_Parser(object):
                 else:
                     text += unicode(elem)
 
-            self.handler.print_header(fpath)
+            # self.handler.print_header(fpath)
             self.parse_page(fpath, text, 1)
-            self.handler.print_footer(fpath)
+            # self.handler.print_footer(fpath)
         except (KeyboardInterrupt, SystemExit):
             raise
         except Exception as e:
