@@ -83,6 +83,11 @@ except ImportError:
 import output
 from whitelist import WhiteList
 
+ind_list = []
+match_list = []
+fname = ""
+out_csv = "out/"
+
 class IOC_Parser(object):
     patterns = {}
 
@@ -149,82 +154,94 @@ class IOC_Parser(object):
                         continue
 
                     self.dedup_store.add((ind_type, ind_match))
-
-                self.handler.print_match(fpath, page_num, ind_type, ind_match)
-
-    def parse_pdf_pypdf2(self, f, fpath):
-        try:
-            pdf = PdfFileReader(f, strict = False)
-
-            if self.dedup:
-                self.dedup_store = set()
-
-            self.handler.print_header(fpath)
-            page_num = 0
-            for page in pdf.pages:
-                page_num += 1
-
-                data = page.extractText()
-
-                self.parse_page(fpath, data, page_num)
-            self.handler.print_footer(fpath)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception as e:
-            self.handler.print_error(fpath, e)
-
-    def parse_pdf_pdfminer(self, f, fpath):
-        try:
-            laparams = LAParams()
-            laparams.all_texts = True  
-            rsrcmgr = PDFResourceManager()
-            pagenos = set()
-
-            if self.dedup:
-                self.dedup_store = set()
-
-            self.handler.print_header(fpath)
-            page_num = 0
-            for page in PDFPage.get_pages(f, pagenos, check_extractable=True):
-                page_num += 1
-
-                retstr = StringIO()
-                device = TextConverter(rsrcmgr, retstr, laparams=laparams)
-                interpreter = PDFPageInterpreter(rsrcmgr, device)
-                interpreter.process_page(page)
-                data = retstr.getvalue()
-                retstr.close()
-
-                self.parse_page(fpath, data, page_num)
-            self.handler.print_footer(fpath)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception as e:
-            self.handler.print_error(fpath, e)
-
-    def parse_pdf(self, f, fpath):
-        parser_format = "parse_pdf_" + self.library
-        try:
-            self.parser_func = getattr(self, parser_format)
-        except AttributeError:
-            e = 'Selected PDF parser library is not supported: %s' % (self.library)
-            raise NotImplementedError(e)
-            
-        self.parser_func(f, fpath)
-
-    def parse_txt(self, f, fpath):
-        try:
-            if self.dedup:
-                self.dedup_store = set()
-
-            data = f.read()
-            self.handler.print_header(fpath)
-            self.parse_page(fpath, data, 1)
-            self.handler.print_footer(fpath)
-        except (KeyboardInterrupt, SystemExit):
-            raise
-        except Exception as e:
-            self.handler.print_error(fpath, e)
+                # print(page_num)
+                ind_list.append(ind_type)
+                match_list.append(ind_match)
+        # print(len(ind_list))
+        # print((match_list[100]))
+        df = pd.DataFrame(list(zip(ind_list, match_list)),
+                          columns=['name', 'value'])
+        # match_df = pd.DataFrame(list(zip([ind_list, match_list])), columns=["name", "value"])
+        fname = fpath[:-4]
+        print("File "+out_csv + fname + "csv saved!")
+        # print(df)
+        df.to_csv(out_csv+ fname +"csv", index=False)
+                # print(ind_match)
+                # self.handler.print_match(fpath, page_num, ind_type, ind_match)
+    #
+    # def parse_pdf_pypdf2(self, f, fpath):
+    #     try:
+    #         pdf = PdfFileReader(f, strict = False)
+    #
+    #         if self.dedup:
+    #             self.dedup_store = set()
+    #
+    #         self.handler.print_header(fpath)
+    #         page_num = 0
+    #         for page in pdf.pages:
+    #             page_num += 1
+    #
+    #             data = page.extractText()
+    #
+    #             self.parse_page(fpath, data, page_num)
+    #         self.handler.print_footer(fpath)
+    #     except (KeyboardInterrupt, SystemExit):
+    #         raise
+    #     except Exception as e:
+    #         self.handler.print_error(fpath, e)
+    #
+    # def parse_pdf_pdfminer(self, f, fpath):
+    #     try:
+    #         laparams = LAParams()
+    #         laparams.all_texts = True
+    #         rsrcmgr = PDFResourceManager()
+    #         pagenos = set()
+    #
+    #         if self.dedup:
+    #             self.dedup_store = set()
+    #
+    #         self.handler.print_header(fpath)
+    #         page_num = 0
+    #         for page in PDFPage.get_pages(f, pagenos, check_extractable=True):
+    #             page_num += 1
+    #
+    #             retstr = StringIO()
+    #             device = TextConverter(rsrcmgr, retstr, laparams=laparams)
+    #             interpreter = PDFPageInterpreter(rsrcmgr, device)
+    #             interpreter.process_page(page)
+    #             data = retstr.getvalue()
+    #             retstr.close()
+    #
+    #             self.parse_page(fpath, data, page_num)
+    #         self.handler.print_footer(fpath)
+    #     except (KeyboardInterrupt, SystemExit):
+    #         raise
+    #     except Exception as e:
+    #         self.handler.print_error(fpath, e)
+    #
+    # def parse_pdf(self, f, fpath):
+    #     parser_format = "parse_pdf_" + self.library
+    #     try:
+    #         self.parser_func = getattr(self, parser_format)
+    #     except AttributeError:
+    #         e = 'Selected PDF parser library is not supported: %s' % (self.library)
+    #         raise NotImplementedError(e)
+    #
+    #     self.parser_func(f, fpath)
+    #
+    # def parse_txt(self, f, fpath):
+    #     try:
+    #         if self.dedup:
+    #             self.dedup_store = set()
+    #
+    #         data = f.read()
+    #         self.handler.print_header(fpath)
+    #         self.parse_page(fpath, data, 1)
+    #         self.handler.print_footer(fpath)
+    #     except (KeyboardInterrupt, SystemExit):
+    #         raise
+    #     except Exception as e:
+    #         self.handler.print_error(fpath, e)
 
     def parse_html(self, f, fpath):
         try:
@@ -278,13 +295,19 @@ class IOC_Parser(object):
             #     tag_dict["family"] = set(section_dict["Tags:"]) - categories
             #     tag_dict["category"] = list(matches)
             for tag in section_dict["Tags:"]:
-                print(fpath+"       1       TAG    " + tag)
+                ind_list.append("Tag")
+                match_list.append(tag)
+                # print("TAG    " + tag)
 
             for family in tag_dict["family"]:
-                print(fpath+"       1       Family    " + family)
+                ind_list.append("Family")
+                match_list.append(family)
+                # print("Family    " + family)
 
             for cat in tag_dict["category"]:
-                print(fpath+"       1       Category    " + cat)
+                ind_list.append("Category")
+                match_list.append(cat)
+                # print("Category    " + cat)
 
             text = u''
             for elem in html:
@@ -344,6 +367,7 @@ if __name__ == "__main__":
     argparser.add_argument('-l', dest='LIB', default='pdfminer', help='PDF parsing library (pypdf2/pdfminer)')
 
     args = argparser.parse_args()
+    # print(args)
 
     parser = IOC_Parser(args.INI, args.INPUT_FORMAT, args.OUTPUT_FORMAT, args.DEDUP, args.LIB)
     parser.parse(args.PATH)
